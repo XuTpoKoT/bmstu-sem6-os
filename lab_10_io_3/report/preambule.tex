@@ -1,0 +1,119 @@
+\documentclass[a4paper,14pt]{extarticle}
+
+\usepackage{cmap} % Улучшенный поиск русских слов в полученном pdf-файле
+\usepackage[T2A]{fontenc} % Поддержка русских букв
+\usepackage[utf8]{inputenc} % Кодировка utf8
+\usepackage[english,russian]{babel} % Языки: русский, английский
+
+\usepackage{enumitem} % Настройка оформления списков
+\setlist{nolistsep} 
+\setenumerate[1]{label={\arabic*)}}
+
+\usepackage{enumitem}
+
+
+\usepackage[14pt]{extsizes} % Задание 14-размера шрифта
+
+\usepackage{caption} % Подпись картинок и таблиц
+\captionsetup{labelsep=endash} % Разделитель между номером и текстом краткое тире и пробел
+\captionsetup[figure]{name={Рисунок}} % Изменяет имя для всех фигур на "Рисунок"
+
+\usepackage{amsmath} % Что-то связанное с математикой
+\usepackage{amssymb}
+
+\usepackage[left=3cm,right=1.5cm,top=2cm,bottom=2cm]{geometry} % Задание геометрии листа
+
+\usepackage{titlesec} % Оформление заголовков
+\titleformat{\section}[block]
+{\bfseries\large}
+{\thesection}
+{1em}
+{}
+
+\titleformat{\subsection}[hang]
+{\bfseries\normalsize}
+{\thesubsection}
+{1em}{}
+
+\titleformat{\subsubsection}[hang]
+{\bfseries\normalsize}
+{\thesubsubsection}
+{1em}{}
+
+\usepackage{setspace}
+\onehalfspacing % Полуторный интервал
+
+\frenchspacing
+\usepackage{indentfirst} % Красная строка
+
+\usepackage{listings} % Оформление листингов
+\usepackage{xcolor} % Добавление цветов 
+
+\usepackage{graphicx} % Вставка рисунков
+
+\newcommand{\img}[4] {
+	\begin{figure}[ht!]
+		\center{
+			\includegraphics[height=#1]{../data/img/#2}
+			\caption{#3}
+			\label{img:#4}
+		}
+	\end{figure}
+}
+
+\usepackage[justification=centering]{caption} % Настройка подписей float объектов
+
+\usepackage[unicode,pdftex]{hyperref} % Ссылки в pdf
+\hypersetup{hidelinks}
+
+\usepackage{csvsimple}
+\usepackage{float}
+
+%\usepackage[shortcuts]{extdash}
+
+%\counterwithin{figure}{section}
+%\counterwithin{table}{section}
+%\numberwithin{equation}{section}
+
+\usepackage{makecell}
+\renewcommand\theadfont{}
+
+\renewcommand{\labelitemi}{---}
+\usepackage{multirow}
+
+% Оформление листингов
+\usepackage{listings}
+\usepackage{xcolor} % Добавление цветов 
+
+\lstdefinestyle{mystyle}{ % Опеределение стиля 
+	language=C++,
+	backgroundcolor=\color{white},
+	basicstyle=\footnotesize\ttfamily,
+	keywordstyle=\color{blue},
+	stringstyle=\color{red},
+	commentstyle=\color{gray},
+	numbers=left,
+	numberstyle=\tiny,
+	stepnumber=1,
+	numbersep=5pt,
+	frame=single,
+	tabsize=4,
+	captionpos=t,
+	breaklines=true,
+	breakatwhitespace=true,
+	xleftmargin=10pt
+}
+\lstset{extendedchars=true, texcl=true}
+\lstset{style=mystyle}
+
+\newcommand{\mylisting}[4] {
+	\noindent
+	{
+		\captionsetup{justification=raggedright,singlelinecheck=off}
+		\begin{lstinputlisting}[
+			caption={#3},
+			label={lst:#4},
+			linerange={#2}
+			]{../../src/#1}
+		\end{lstinputlisting}
+}}

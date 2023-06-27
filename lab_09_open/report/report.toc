@@ -1,0 +1,5 @@
+\babel@toc {russian}{}\relax 
+\contentsline {chapter}{\numberline {1}Используемые структуры}{3}{chapter.1}%
+\contentsline {chapter}{\numberline {2}Конструкторская часть}{9}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Алгоритм DBSCAN}{9}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Функциональные требования}{10}{section.2.2}%
