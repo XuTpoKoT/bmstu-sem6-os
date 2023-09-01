@@ -1,0 +1,13 @@
+thread_ind = 1: char = a
+thread_ind = 1: char = c
+thread_ind = 1: char = e
+thread_ind = 1: char = g
+thread_ind = 1: char = i
+thread_ind = 1: char = k
+thread_ind = 1: char = m
+thread_ind = 1: char = o
+thread_ind = 1: char = q
+thread_ind = 1: char = s
+thread_ind = 1: char = u
+thread_ind = 1: char = w
+thread_ind = 1: char = y

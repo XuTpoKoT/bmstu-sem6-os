@@ -1,0 +1,20 @@
+\usepackage[ddmmyyyy]{datetime} % Определяем формат данных для \today
+\renewcommand{\dateseparator}{.} % Определяем сепаратор между единицами времени
+
+\usepackage{float}
+\usepackage{graphicx}
+% \newcommand{\img}[2] {
+% 	\begin{figure}[H]
+% 		\center{\includegraphics[width=0.7\linewidth]{images/#2}}
+% 		\label{img:#2}
+% 	\end{figure}
+% }
+
+\usepackage{graphicx}
+\newcommand{\img}[3] {
+	\begin{figure}[H]
+		\center{\includegraphics[height=#1]{images/#2}}
+		\label{img:#2}
+    \caption{#3}
+	\end{figure}
+}

@@ -1,0 +1,498 @@
+\chapter{Билет №8}
+
+\section*{Средства взаимодействия процессов — сокеты Беркли. Создание сокета — семейство, тип, протокол. Системный вызов sys\_socket() и struct socket. Состояния сокета. Адресация сокетов и ее особенности для разных типов сокетов. Модель клиент-сервер. Сетевые сокеты — сетевой стек, аппаратный и сетевой порядок байтов. Примеры реализации взаимодействия процессов по модели клиент-сервер с использованием сокетов и мультиплексированием (лаб. раб.).}
+
+\section{Средства взаимодействия процессов — сокеты Беркли}
+Сокеты -- универсальное средство взаимодействия параллельных процессов. Универсальность заключается в том, что сокеты используются как и на локальной машине, так и в распределенной системе (сети), в отличие от, например, разделяемой памяти, которая применима только на отдельно стоящей машине.
+
+Сокет -- абстракция конечной точки взаимодействия.
+
+Взаимодействие на оптдельной машине и в сети существенно разное: в сети это будет транспортный уровень (сетевой протокол, например, TCP/IP)
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{p{1\linewidth}}
+    \centering
+    \includegraphics[width=0.8\linewidth]{./images/1.png}
+  \end{tabular}
+\end{table}
+
+Парные сокеты обеспечивают дуплексную связь, т.е. сообщения можно передавать через один сокет в обе стороны (альтернатива pipe)
+
+\begin{quote}
+	\textbf{Парные сокеты vs программные каналы}
+
+  Парные сокеты были созданы в UNIX BSD как универсальное (могут быть использованы для взаимодействяи параллельных процессов на отдельно стоящей машине и в распределенных системах) средство взаимодействия параллельных процессов.
+
+  Распределенная система - у каждого узла (хоста) своя память.
+
+  Отличия от pipe: парные сокеты обеспечивают дуплесную связь (двусторонюю, читение и запись), а pipe - симплексную (односторонюю)
+
+  \textbf{BSD Сокеты}
+
+  \begin{table}[H]
+  \centering
+  \begin{tabular}{p{1\linewidth}}
+    \centering
+    \includegraphics[width=0.8\linewidth]{./images/8-2.pdf}
+  \end{tabular}
+\end{table}
+
+  Сокеты Packet созданы для непосредственного доступа приложений е сетевым устройстам
+
+  Сокетов Netlink очень много, основные: NETLINK\_USERSOCK, NETLINK\_FIREWALL.
+
+  Созданы для обмена данными между частями ядра и пространством пользователя.
+
+  \textbf{связь виртуальной файловой системы proc и сокетов NETLINK}
+
+  В Linux есть ВФС proc, созданная специально для того, чтобы в пространстве пользователя можно было получить информацию о выполнении процессов. Но в ядре информации значительно больше (и о процессах, и о ресурсах). Очень важно иметь возможность получить ее. Ядро предоставляет средства для получения этой информации. Одним из таких средств являются сокеты NETLINK.
+\end{quote}
+
+\section{Создание сокета}
+
+Сокеты для взаимодействия на отдельно стоящей машине/ в сети создаются системным вызовом
+
+\begin{lstlisting}
+int socket(int family, int type, int protocol);
+\end{lstlisting}
+
+Параметры системного вызова socket()
+
+\begin{itemize}
+\item family/domain - пространство имен
+\begin{itemize}
+\item AF\_UNIX - межпроцессорное взаимодействие на отдельно стоящей машине, часто говорят “домен UNIX”. Сокеты в файловом пространстве имен. 
+\item AF\_INET - семейство TCP/IP для интернета версии 4 (IPv4). Интернет-домен, фактически любая компьютерная сеть
+\item AF\_INET6 - семейство TCP/IP для IPv6
+\item AF\_IPX - домен протокола IPX
+\item AF\_UNSPEC - неопределенный домен
+\end{itemize} 
+AF - address family. Сокеты на отдельно стоящей машине (локальные сокеты) взаимодействуют через файловое пространство имен. Чтобы организовать взаимодействие процессов через сокеты AF\_UNIX, объявляется файл, который виден в файловой подсистеме как специальный файл (s - маленькая)
+\begin{itemize}
+\item SOCK\_STREAM - потоковые сокеты. Определяет ориентированное на потоки, надержное, упорядоченное, логическое соединение между двумя сокетами
+\item SOCK\_DGRAM - опредялеют ненадежную службу дейтаграм без установления логического соединения, где пакеты модут передаваться без сохранения порядка (широковещательная передача данных)
+\item SOCK\_RAW - низкоуровневые сокеты
+\end{itemize}
+\item protocol \\ 
+обычно ставится 0 - протокол назначается по умолчанию. Например, для AF\_INET SOCK\_STREAM протокол TCP, но можно задать протокол предописанной константой IPPROTO\_*, например, IPPROTO\_TCP
+\end{itemize}
+
+\section{Системный вызок sys\_socket()}
+В ядре socket вызывает sys\_socket.
+\begin{lstlisting}
+#include <net/socket.c>
+asmlinkage long sys_socketcall(int call, unsigned long *args)
+// ее текст = switch, переключающий ядро на разные функции, связанные с сокетом
+{
+  int err;
+  if copy_from_user(a, args, nargs[call])
+    return -EFAULT;
+  a0 = a[0];
+  a1 = a[1];
+  switch(call)
+  {
+      case SYS_SOCKET: err= sys_socket(a0, a1, a[2]); break;
+      case SYS_BIND: err= sys_bind(a0, (struct sockaddr*)a1, a[2]); break;
+      case SYS_CONNECT: err= sys_connect(...); break;
+      ...
+      default: err = -EINVAL; break;
+  }
+  return err;
+}
+\end{lstlisting}
+В switch перечисляются функии так называемого сетевого стека. Для них определены предописанные константы (макроопределения): (код с дефайнами относится к пояснению)
+
+\begin{lstlisting}
+<include/linux/net.h>
+#define SYS_SOCKET 1
+#define SYS_BIND 2
+#define SYS_CONNECT 3
+#define SYS_LISTEN 4
+\end{lstlisting}
+
+\begin{lstlisting}
+asmlinage long sys_socket(int family, int type, int protocol)
+{
+  int retval;
+  struct socket *sock;
+  ...
+  reval = sock_create(famaly, type, protocol, &sock);
+  ...
+  return retval;
+}
+\end{lstlisting}
+
+\section{struct socket. Состояния сокета}
+\begin{lstlisting}
+struct socket // нет в 6 версии ядра
+{
+  socket_state state;
+  short type;
+  unsigned long flags;
+  const struct proto_ops *ops;
+  struct fasync_strcut *fasync_list;
+  struct file *file;
+  struct sock *sk;
+  wait_queue_head_t wait;
+}
+\end{lstlisting}
+
+flags - используется для синхронизации доступа.
+
+struct proto\_ops - действия на сокете (protocol operations). Здесь можно зарегистрировать свои функции работы с сокетами.
+
+У сокета различают 5 состояний, 4 из которых - стадии соединения:
+
+\begin{itemize}
+\item SS\_FREE - свободный сокет, с которым можно соединяться;
+\item SS\_UNCONNECTED - несоединенный сокет;
+\item SS\_CONNECTING - сокет находится в состоянии соединения;
+\item SS\_CONNECTED - соединенный сокет;
+\item SS\_DISCONNECTING - сокет разъединяется в данный момент.
+\end{itemize}
+
+Сокеты описываются как открытые файлы (они не хранятся во вторичной памяти, это файлы специального типа (сможем увидеть только в сокетах в файловом пространстве имент AF\_UNIX))
+
+\section{Адресация сокетов и ее особенности для разных типов сокетов}
+
+struct sockaddr - обращение к сокету выполняется по адресу (сщкеты адресуются)
+
+Взаимодействие на сокетаз происходит по модели клиент-сервер
+
+Адресация сокетов:
+\begin{lstlisting}
+struct sockaddr
+{
+  sa_family_t sa_family;
+  char sa_data[14]; 
+}
+\end{lstlisting}
+Такая структура адреса не подходит для интернета, так как там необходимо указывать номер порта и сетевой адрес. Для интернета разработана другая структура:
+
+\begin{lstlisting}
+struct soackaddr_in
+{
+  sa_family_t sa_family;
+  unsigned short int sin_port;
+  struct in_addr sin_addr;
+  unsigned char sin_zero[sizeof(struct sockaddr) - sizeof(sa_family_t) - sizeof(uint16_t) - sizeof(struct in_addr)];
+};
+\end{lstlisting}
+
+\section{Модель клиент-сервер}
+Взаимодействие на сокетах осуществляется по модели клиент-сервер: сервер предоставляет ресурсы и службы одному или нескольким клиентам, которые обращаются к серверу за обслуживанием. 
+
+В момент, когда клиент запрашивает соединение с сервером, сервер может либо принять, либо отклонить запрос на соединение. Если соединение устанавливается, то оно поддерживается по определённому протоколу.
+\section{Сетевой стек}
+
+Сети ~ распределенные системы, т.е. у каждого хоста своя память
+
+В сетях - только передача сообщений, которые должны сопровождаться адресом
+
+Пакет - сообщение с адресом + служебная информация 
+
+В Linux определен интерфейс между пользовательскими процессами и стеком сетевых протоколов в ядре.
+
+\begin{quote}
+Это не по семинару*
+
+Модули протоколов группируются по семействам протоколов, такими, как AF\_INET, AF\_IPX и AF\_PACKET, и типам сокетов, такими, как SOCK\_STREAM или SOCK\_DGRAM. Сетевой стек ядра Linux имеет две структуры:
+
+struct socket — интерфейс высокого уровня, который используется для системных вызовов (именно поэтому он также имеет указатель struct file, который представляет файловый дескриптор)
+
+struct sock — реализация в ядре для AF\_INET сокетов (есть также struct unix\_sock для AF\_UNIX сокетов, которые являются производными от данного), которые могут использоваться как в ядре, так и в режиме пользователя.
+\end{quote}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{p{1\linewidth}}
+    \centering
+    \includegraphics[width=0.8\linewidth]{./images/4.pdf}
+  \end{tabular}
+\end{table}
+
+socket() - создание точки соединения. Возвращает файловый дескриптор. Сокет - специальный файл (у него есть inode), назначение которого - обеспечивать соединения;
+
+AF\_INET, SOCK\_STREAM - сетевое взаимодействие по протоколу TCP
+
+bind() связывает сокет с адресом (сетевым (порт + API-адрес) в случае сокетов AF\_INET)
+
+\begin{lstlisting}
+int bind(int sockfd, struct sockaddr *addr, int addrlen);
+\end{lstlisting}
+
+struct sockaddr\_in - есть поле “порт” и “сетевой адрес” (у них должен быть сетевой порядок (применяем функцию htons())
+
+На сервере вызов bind() обязателен, на клиенте нет, т.к. его точный адрес часто не играет никакой роли (если bind() не вызывается, адрес назначается клиентам автоматически)
+
+listen() информаирует ОС о том, что он готов принимать соединения (имеет смысл только для протоколов, ориентированных на соединение (например, TCP)
+
+\begin{lstlisting}
+int listen(int sockfd, int baclog);
+\end{lstlisting}
+connect() - клиент устаналивает активное соединение с сокетом (с сервером)
+\begin{lstlisting}
+int connect(int sockfd, struct sockaddr *addr, int addrlen)
+\end{lstlisting}
+
+Для протокола без соединения (например, UDP) connect может использоваться для указания адреса назначения всех передаваемых пакетов
+
+accept() - вызывается на стороне сервера, если соединение установлено. Сервер принимает соединение, *только если* он получил запрос на соединение.
+
+\begin{lstlisting}
+int accept(int sockfd, void* addr, int *addrlen)
+\end{lstlisting}
+
+Когда соединение принимается, accept()  создает копию исходого сокета, чтобы сервер мог принимать другие соединения. Исходный сокет остается в состоянии listen, а копия будет находиться в состоянии connected. accept() возвращает файловый дескриптор копии исходного сокета.
+
+\begin{quote}
+про уровни сетевых протоколов
+
+Протоколы различаются по уровням. Нижний уровень - непосредсвенное взаимодействие с аппаратной частью (самое важное)
+\end{quote}
+
+\section{Аппаратный и сетевой порядок байтов}
+
+Порядок байт:
+
+\begin{itemize}
+\item аппаратный
+\item сетевой
+\end{itemize}
+
+Прямой и обратный порядок байт
+
+  \begin{table}[H]
+  \centering
+  \begin{tabular}{p{1\linewidth}}
+    \centering
+    \includegraphics[width=0.8\linewidth]{./images/3.png}
+  \end{tabular}
+\end{table}
+
+Сети оперируют портами и сетевыми адресами
+
+\begin{lstlisting}
+uint16_t htons(uint16_t hostint16) // host to network short
+uint32_t htonl(uint32_t hostint32) // host to network long
+...      ntohs() // network to host short
+...      ntohl() // network to host long
+\end{lstlisting}
+
+\section{Примеры реализации взаимодействия процессов по модели клиент-сервер с использованием сокетов и мультиплексированием (лаб. раб.)}
+
+Сетевые сокеты с мультиплексированием:
+
+Мультиплексирование - альтерната многопоточности (созданию дочернего процесса/потока для обработки каждого соедниния)
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{p{1\linewidth}}
+    \centering
+    \includegraphics[width=0.8\linewidth]{./images/5.pdf}
+  \end{tabular}
+\end{table}
+
+\begin{quote}
+Это детализированная схема: клиенты вызывают connect() и создается пул сокетов.
+
+Для сокращения времени блокировки сервера в ожидании соединения используется select() (пока соединение не возникнет, сервер будет блокирован на accept(), т.е. будет в состоянии пассивного ожидания соединения), т.к. время установления соединения со многими клиентами меньше, чем с каждым конкретным клиентом в определенной последовательности.
+
+В результате select() создает пул соединение. Есть макрос, который “реагирует” на возникновение хотя бы одного соединения. В результате будет вызан accept(), который последовательнос принимает соединения.
+
+Для создания пула соединений можно использовать массив.
+
+Мультиплексор опрашивает соединения. Когда соединение готово, оно фиксируется ядром.
+
+Мультиплексопы: 
+select    pool
+pselect   epool
+\end{quote}
+
+Код клиента
+\begin{lstlisting}
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#define SERVER_PORT 8080
+#define MSG_LEN 64
+
+int main(void)
+{
+  setbuf(stdout, NULL);
+
+  struct sockaddr_in serv_addr =
+  {
+    .sin_family = AF_INET,
+    .sin_addr.s_addr = INADDR_ANY,
+    .sin_port = htons(SERVER_PORT)
+  };
+  socklen_t serv_len;
+
+  char buf[MSG_LEN];
+
+  int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock_fd == -1)
+    // error handling
+
+  if (connect(sock_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    // error handling
+
+  char input_msg[MSG_LEN], output_msg[MSG_LEN];
+  sprintf(output_msg, "%d", getpid());
+
+  if (write(sock_fd, output_msg, strlen(output_msg) + 1) == -1)
+    // error handling
+
+  printf("Client send:    %d\n", getpid());
+
+  if (read(sock_fd, input_msg, MSG_LEN) == -1)
+    // error handling
+
+  printf("Client receive: %s \n", input_msg);
+  close(sock_fd);
+  return EXIT_SUCCESS;
+}
+\end{lstlisting}
+
+Код сервера
+\begin{lstlisting}
+#include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/epoll.h>
+
+#define MAX_EVENTS_COUNT 100
+#define SERVER_PORT 8080
+#define MSG_LEN 64
+
+static int sock_fd_global;
+
+void server_shutdown(int signum)
+{
+    printf("\nShutdowning server...\n");
+    close(sock_fd_global);
+    exit(EXIT_SUCCESS);
+}
+
+int handle_event(int sock_fd)
+{
+  struct sockaddr_in client_addr; 
+  socklen_t client_len;
+  char input_msg[MSG_LEN];
+  
+  int bytes = read(sock_fd, input_msg, MSG_LEN);
+
+  if (bytes == 0)
+    return(EXIT_SUCCESS);
+
+  if (bytes == -1)
+  {
+    perror("read");
+    return EXIT_FAILURE;
+  }
+
+  printf("Server receive: %s \n", input_msg);
+
+  char output_msg[MSG_LEN];
+  sprintf(output_msg, "%s %d", input_msg, getpid());
+
+  if (write(sock_fd, output_msg, MSG_LEN) == -1)
+    // error handling
+
+  printf("Server send:    %s \n", output_msg);
+
+  return EXIT_SUCCESS;
+}
+
+int main(void)
+{
+  setbuf(stdout, NULL);
+
+  struct epoll_event ev, events[MAX_EVENTS_COUNT];
+  int listen_sock, nfds, epoll_fd;
+
+  struct sockaddr_in serv_addr =
+  {
+    .sin_family = AF_INET,
+    .sin_addr.s_addr = INADDR_ANY,
+    .sin_port = htons(SERVER_PORT)
+  };
+  
+  listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (listen_sock == -1)
+    // error handling
+  sock_fd_global = listen_sock;
+
+  if (bind(listen_sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1)
+    // error handling
+
+  if (listen(listen_sock, 1) == -1)
+    // error handling
+
+  signal(SIGINT, server_shutdown);
+  signal(SIGTERM, server_shutdown);
+  printf("Server is working.\n(Press Ctrl+C to stop)\n");
+
+  epoll_fd = epoll_create1(0);
+  if (epoll_fd == -1)
+    // error handling
+
+  ev.events = EPOLLIN;
+  ev.data.fd = listen_sock;
+  if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listen_sock, &ev) == -1)
+    // error handling
+
+  for (;;)
+  {
+    nfds = epoll_wait(epoll_fd, events, MAX_EVENTS_COUNT, -1);
+    if (nfds == -1)
+      // error handling
+
+    for (int n = 0; n < nfds; ++n)
+    {
+      if (events[n].data.fd == listen_sock)
+      {
+        struct sockaddr client_addr; 
+        socklen_t client_len;
+        
+        int conn_sock = accept(listen_sock, (struct sockaddr *)&client_addr, &client_len);
+        if (conn_sock == -1)
+          // error handling
+        
+        int status = fcntl(conn_sock, F_SETFL, fcntl(conn_sock, F_GETFL, 0) | O_NONBLOCK);
+        if (status == -1)
+          // error handling
+
+        ev.events = EPOLLIN | EPOLLET;
+        ev.data.fd = conn_sock;
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_sock, &ev) == -1)
+          // error handling
+      }
+      else if (handle_event(events[n].data.fd) != EXIT_SUCCESS)
+      {
+        close(listen_sock);
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
+  close(listen_sock);
+  return EXIT_SUCCESS;
+}
+\end{lstlisting}
